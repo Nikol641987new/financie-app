@@ -10,6 +10,11 @@ tickers:
   - SPY       # S&P 500 ETF
   - VWCE.DE   # celosvetový akciový ETF
 
+# Predvolená mena amerických tickerov a výnimky obchodované v EUR.
+default_currency: USD
+currencies:
+  VWCE.DE: EUR
+
 # Nastavenia indikátorov (odporúčané, štandardne používané hodnoty)
 indicators:
   sma_short: 50

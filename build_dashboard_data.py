@@ -24,6 +24,22 @@ def build_dashboard_data() -> dict:
     indicators_config = config["indicators"]
     rules_config = config.get("rules", {})
     purchase_prices = config.get("purchase_prices", {}) or {}
+    default_currency = config.get("default_currency", "USD")
+    currency_overrides = config.get("currencies", {})
+    currencies = {
+        ticker: currency_overrides.get(ticker, default_currency)
+        for ticker in config.get("tickers", [])
+    }
+    usd_to_eur = None
+    fx_date = None
+    if "USD" in currencies.values():
+        fx_history = fetch_history("EURUSD=X", period="5d")
+        usd_per_eur = float(fx_history["Close"].iloc[-1])
+        if usd_per_eur <= 0:
+            raise ValueError(f"Neplatný kurz USD/EUR z Yahoo Finance: {usd_per_eur}")
+        usd_to_eur = 1 / usd_per_eur
+        fx_date = pd.Timestamp(fx_history.index[-1]).strftime("%d.%m.%Y")
+
     assets = []
     errors = []
 
@@ -31,6 +47,27 @@ def build_dashboard_data() -> dict:
         try:
             prices = fetch_history(ticker, period="1y")
             latest = prices.iloc[-1]
+            currency = currencies[ticker]
+            if currency == "EUR":
+                conversion_to_eur = 1.0
+            elif currency == "USD":
+                conversion_to_eur = usd_to_eur
+            else:
+                raise ValueError(
+                    f"Mena {currency} pre {ticker} nie je podporovaná. "
+                    "Zatiaľ sú podporované USD a EUR."
+                )
+
+            sma_short = (
+                float(prices["Close"].rolling(indicators_config["sma_short"]).mean().iloc[-1])
+                if len(prices) >= indicators_config["sma_short"]
+                else None
+            )
+            sma_long = (
+                float(prices["Close"].rolling(indicators_config["sma_long"]).mean().iloc[-1])
+                if len(prices) >= indicators_config["sma_long"]
+                else None
+            )
             signals = evaluate_ticker(
                 ticker=ticker,
                 df=prices,
@@ -57,21 +94,23 @@ def build_dashboard_data() -> dict:
                 {
                     "ticker": ticker,
                     "date": pd.Timestamp(prices.index[-1]).strftime("%d.%m.%Y"),
-                    "price": float(latest["Close"]),
-                    "sma_short": (
-                        float(prices["Close"].rolling(indicators_config["sma_short"]).mean().iloc[-1])
-                        if len(prices) >= indicators_config["sma_short"]
-                        else None
-                    ),
-                    "sma_long": (
-                        float(prices["Close"].rolling(indicators_config["sma_long"]).mean().iloc[-1])
-                        if len(prices) >= indicators_config["sma_long"]
-                        else None
-                    ),
+                    "price_currency": "EUR",
+                    "price": float(latest["Close"]) * conversion_to_eur,
+                    "sma_short": sma_short * conversion_to_eur if sma_short is not None else None,
+                    "sma_long": sma_long * conversion_to_eur if sma_long is not None else None,
                     "rsi": _latest_rsi(prices["Close"], indicators_config["rsi_period"]),
                     "status": status,
                     "signals": [
-                        {"type": signal.signal_type, "reason": signal.reason}
+                        {
+                            "type": signal.signal_type,
+                            "reason": _display_reason(
+                                reason=signal.reason,
+                                currency=currency,
+                                current_price=float(latest["Close"]),
+                                purchase_price=purchase_prices.get(ticker),
+                                conversion_to_eur=conversion_to_eur,
+                            ),
+                        }
                         for signal in signals
                     ],
                 }
@@ -84,9 +123,40 @@ def build_dashboard_data() -> dict:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "sma_short_period": indicators_config["sma_short"],
         "sma_long_period": indicators_config["sma_long"],
+        "currency": "EUR",
+        "usd_to_eur": usd_to_eur,
+        "fx_date": fx_date,
         "assets": assets,
         "errors": errors,
     }
+
+
+def _display_reason(
+    reason: str,
+    currency: str,
+    current_price: float,
+    purchase_price: float | None,
+    conversion_to_eur: float,
+) -> str:
+    """Zobrazí stop-loss/take-profit nákupnú cenu aj v EUR."""
+    if purchase_price is None or purchase_price <= 0:
+        return reason
+
+    change_pct = (current_price - purchase_price) / purchase_price * 100
+    if currency not in {"USD", "EUR"}:
+        return reason
+    purchase_price_eur = purchase_price * conversion_to_eur
+    if reason.startswith("Stop-loss:"):
+        return (
+            f"Stop-loss: cena klesla o {change_pct:.1f}% od nákupnej ceny "
+            f"{purchase_price_eur:.2f} €"
+        )
+    if reason.startswith("Take-profit:"):
+        return (
+            f"Take-profit: zisk {change_pct:.1f}% od nákupnej ceny "
+            f"{purchase_price_eur:.2f} €"
+        )
+    return reason
 
 
 def _latest_rsi(close: pd.Series, period: int) -> float | None:

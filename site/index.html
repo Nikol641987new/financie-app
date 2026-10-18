@@ -73,9 +73,7 @@
       .section{margin-top:29px}
       .asset-row{grid-template-columns:1fr 1fr;gap:7px 12px;padding:13px 14px}
       .asset-head{display:none}.asset-reason{grid-column:1/-1;margin-top:0}
-      .asset-row>.asset-number:nth-of-type(2)::before{content:"Cena ";color:#88938c;font-size:11px}
-      .asset-row>.asset-number:nth-of-type(3)::before{content:"SMA 50 ";color:#88938c;font-size:11px}
-      .asset-row>.asset-number:nth-of-type(4)::before{content:"SMA 200 ";color:#88938c;font-size:11px}
+        .asset-number::before{content:attr(data-label) " ";color:#88938c;font-size:11px}
     }
     @media(max-width:390px){.page{padding-left:13px;padding-right:13px}.metric-label{font-size:10px}.metric-value{font-size:20px}.refresh{padding:9px 11px}}
   </style>
@@ -118,7 +116,7 @@
 
     <section class="section">
       <h2>Sledované aktíva</h2>
-      <p class="section-subtitle">Cena v mene trhu aktíva, technické ukazovatele a aktuálny stav</p>
+      <p class="section-subtitle">Ceny aj kĺzavé priemery sú prepočítané na eurá</p>
       <div class="assets" id="assets">
         <div class="asset-row asset-head"><span>Aktívum</span><span>Aktuálny stav</span><span>Posledná cena</span><span>SMA 50</span><span>SMA 200</span><span>Dátum dát</span></div>
         <div class="asset-row"><span>Načítavam trhové dáta…</span></div>
@@ -131,6 +129,7 @@
   </main>
   <script>
     const numberFormat = new Intl.NumberFormat("sk-SK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const euroFormat = new Intl.NumberFormat("sk-SK", { style: "currency", currency: "EUR" });
     const dateFormat = new Intl.DateTimeFormat("sk-SK", { dateStyle: "medium", timeStyle: "short" });
 
     function element(tag, className, text) {
@@ -148,11 +147,14 @@
         return new Date(by, bm - 1, bd) - new Date(ay, am - 1, ad);
       })[0] || "—";
       const generated = data.generated_at ? dateFormat.format(new Date(data.generated_at)) : "Neznámy";
+      const rateNote = data.usd_to_eur
+        ? `Kurz: 1 USD = ${euroFormat.format(data.usd_to_eur)} · ${data.fx_date}`
+        : "Všetky aktíva sú v EUR";
       const values = [
         [data.assets.length, "Akcie a ETF v zozname"],
         [buys.length, "Vyžadujú tvoje posúdenie"],
         [sells.length, "Vyžadujú tvoje posúdenie"],
-        [latestDate, `Dáta vytvorené ${generated}`],
+        [latestDate, `${rateNote} · aktualizované ${generated}`],
       ];
       document.querySelectorAll("#metrics .metric").forEach((card, index) => {
         card.querySelector(".metric-value").textContent = values[index][0];
@@ -175,7 +177,7 @@
         const item = element("div", "signal-item");
         const top = element("div", "signal-top");
         top.append(element("span", "ticker", asset.ticker));
-        top.append(element("span", "signal-price", `${numberFormat.format(asset.price)} · ${asset.date}`));
+        top.append(element("span", "signal-price", `${euroFormat.format(asset.price)} · ${asset.date}`));
         item.append(top);
         const reasons = asset.signals.filter((signal) => signal.type === type).map((signal) => signal.reason).join("; ");
         item.append(element("div", "reason", reasons));
@@ -190,7 +192,7 @@
       [
         "Aktívum",
         "Aktuálny stav",
-        "Posledná cena",
+        "Cena (EUR)",
         `SMA ${window.dashboardData.sma_short_period ?? 50}`,
         `SMA ${window.dashboardData.sma_long_period ?? 200}`,
         "Dátum dát",
@@ -211,9 +213,15 @@
           "Bez nového signálu": "neutral",
         }[asset.status] || "neutral";
         row.append(element("span", `badge ${badgeType}`, asset.status));
-        row.append(element("span", "asset-number", numberFormat.format(asset.price)));
-        row.append(element("span", "asset-number", asset.sma_short == null ? "—" : numberFormat.format(asset.sma_short)));
-        row.append(element("span", "asset-number", asset.sma_long == null ? "—" : numberFormat.format(asset.sma_long)));
+        const price = element("span", "asset-number", euroFormat.format(asset.price));
+        price.dataset.label = "Cena";
+        row.append(price);
+        const shortSma = element("span", "asset-number", asset.sma_short == null ? "—" : euroFormat.format(asset.sma_short));
+        shortSma.dataset.label = `SMA ${window.dashboardData.sma_short_period ?? 50}`;
+        row.append(shortSma);
+        const longSma = element("span", "asset-number", asset.sma_long == null ? "—" : euroFormat.format(asset.sma_long));
+        longSma.dataset.label = `SMA ${window.dashboardData.sma_long_period ?? 200}`;
+        row.append(longSma);
         row.append(element("span", "asset-sub", asset.date));
         const reason = asset.signals.length ? asset.signals.map((signal) => signal.reason).join("; ") : "Bez nového technického signálu";
         row.append(element("div", "asset-reason", reason));

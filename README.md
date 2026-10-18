@@ -40,9 +40,11 @@ Stránku môžeš spustiť aj lokálne v interaktívnej Streamlit verzii:
 streamlit run app.py
 ```
 
-Obe verzie používajú tickery a pravidlá z `config.yaml`. Na GitHub Pages tlačidlo
-**Obnoviť** načíta naposledy publikované dáta; nové ceny sa získajú až pri
-ďalšom úspešnom spustení workflow.
+Obe verzie používajú tickery a pravidlá z `config.yaml`. GitHub Pages prevádza
+USD ceny na EUR podľa najnovšieho dostupného kurzu `EURUSD=X` z Yahoo Finance;
+natívne eurové ceny zostávajú bez prepočtu. Tlačidlo **Obnoviť** načíta
+naposledy publikované dáta; nové ceny a kurz sa získajú pri ďalšom úspešnom
+spustení workflow. Lokálna Streamlit verzia zobrazuje natívne ceny trhu.
 
 Signály sú iba technické indikácie založené na minulých cenách, nie finančné
 poradenstvo ani záruka budúceho vývoja.
