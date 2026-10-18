@@ -1,0 +1,34 @@
+# Predvyplnený zoznam sledovaných tickerov (veľké akcie + populárne ETF)
+# Toto je len rozumný default - appka funguje hneď takto, upravovať netreba.
+# Ak by si niekedy chcela zmeniť, čo appka sleduje, stačí upraviť tento zoznam.
+tickers:
+  - AAPL
+  - MSFT
+  - GOOGL
+  - AMZN
+  - NVDA
+  - SPY       # S&P 500 ETF
+  - VWCE.DE   # celosvetový akciový ETF
+
+# Nastavenia indikátorov (odporúčané, štandardne používané hodnoty)
+indicators:
+  sma_short: 50
+  sma_long: 200
+  rsi_period: 14
+  rsi_oversold: 30
+  rsi_overbought: 70
+
+# Jednoduché % pravidlá - vypnuté, kým nezadáš nákupné ceny nižšie (netreba riešiť)
+rules:
+  stop_loss_pct: 5
+  take_profit_pct: 15
+
+# Nákupné ceny - NEPOVINNÉ. Appka funguje aj bez toho (len bez stop-loss/take-profit
+# upozornení, ktoré aj tak dávajú zmysel len pre tickery, ktoré už reálne vlastníš).
+# Ak niekedy niečo kúpiš a budeš chcieť sledovať aj toto, pridáš riadok napr.:
+# AAPL: 180.0
+purchase_prices: {}
+
+# Telegram notifikácie (návod na nastavenie je v README.md)
+telegram:
+  enabled: true
