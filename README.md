@@ -24,16 +24,25 @@ python main.py
 
 ## Webový prehľad signálov
 
-Na zobrazenie sledovaných aktív, cien a nákupných/predajných signálov spusti:
+Stránka je dostupná priamo cez GitHub Pages:
+
+https://nikol641987new.github.io/financie-app/
+
+Statický web používa trhové údaje, ktoré vytvorí GitHub Actions. Údaje sa
+obnovujú pri každom pushi do `main`, manuálnom spustení workflow a automaticky
+v pracovné dni o 22:15 UTC. Ak GitHub Pages ešte nie je prepojené s workflow,
+v repozitári otvor **Settings → Pages** a nastav **Source: GitHub Actions**.
+Stav nasadenia nájdeš v **Actions → Build and deploy dashboard**.
+
+Stránku môžeš spustiť aj lokálne v interaktívnej Streamlit verzii:
 
 ```bash
 streamlit run app.py
 ```
 
-Stránka ukazuje signály vypočítané z posledných dostupných denných dát a pravidiel
-v `config.yaml`. Načítané dáta sa cachujú na 5 minút; tlačidlom **Obnoviť dáta**
-ich možno načítať aj manuálne. Zoznam sledovaných tickerov a indikátory upravíš
-v `config.yaml`.
+Obe verzie používajú tickery a pravidlá z `config.yaml`. Na GitHub Pages tlačidlo
+**Obnoviť** načíta naposledy publikované dáta; nové ceny sa získajú až pri
+ďalšom úspešnom spustení workflow.
 
 Signály sú iba technické indikácie založené na minulých cenách, nie finančné
 poradenstvo ani záruka budúceho vývoja.
@@ -59,17 +68,17 @@ stop-loss %, take-profit %, prípadne nákupné ceny pre stop-loss výpočty.
 
 ## 4. Automatické spúšťanie cez GitHub Actions (zadarmo)
 
-Repozitár už obsahuje workflow `.github/workflows/daily-screener.yml`,
-ktorý beží automaticky každý pracovný deň o 18:00 UTC.
+Workflow `.github/workflows/deploy-pages.yml` automaticky vytvára web pre
+GitHub Pages a obnovuje jeho trhové dáta v pracovné dni o 22:15 UTC.
 
-Aby fungoval, treba pridať Telegram údaje ako **GitHub Secrets**:
+Ak chceš používať Telegram notifikácie, pridaj údaje ako **GitHub Secrets**:
 
 1. V repozitári choď na **Settings → Secrets and variables → Actions**
 2. Klikni **New repository secret** a pridaj:
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
-3. Workflow sa spustí automaticky podľa plánu, alebo ho vieš spustiť
-   manuálne cez záložku **Actions → Daily Stock Screener → Run workflow**
+3. Telegram notifikácie sa spúšťajú samostatne príkazom `python main.py`.
+   Workflow GitHub Pages aktualizuje web a trhové dáta.
 
 ## Štruktúra projektu
 
@@ -82,8 +91,10 @@ stock-notifier/
 ├── notifier.py            # Telegram notifikácie
 ├── main.py                # hlavný orchestračný skript
 ├── requirements.txt
+├── build_dashboard_data.py  # generovanie JSON s trhovými dátami
+├── site/                    # statická stránka pre GitHub Pages
 └── .github/workflows/
-    └── daily-screener.yml  # automatické denné spúšťanie
+    └── deploy-pages.yml     # nasadenie stránky a obnova dát
 ```
 
 ## Možné rozšírenia

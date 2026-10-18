@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f5">
+  <meta name="description" content="Prehľad trhových údajov a technických signálov pre sledované akcie a ETF.">
+  <title>Trhové signály | Financie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{color-scheme:light;--ink:#17231f;--muted:#718078;--green:#137a58;--line:#e8ede9;--canvas:#f5f7f5;--red:#bd4b49}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--canvas);color:var(--ink);font:15px/1.5 "DM Sans",sans-serif}
+    button{font:inherit}
+    .page{max-width:1200px;margin:0 auto;padding:48px 32px 60px}
+    .header{display:flex;align-items:center;justify-content:space-between;gap:24px}
+    .eyebrow{display:flex;align-items:center;gap:10px;color:var(--green);font-size:11px;font-weight:700;letter-spacing:.14em}
+    .live-dot{width:8px;height:8px;border-radius:50%;background:#42a878;box-shadow:0 0 0 4px #e0f1e7}
+    h1,h2{font-family:Manrope,sans-serif;letter-spacing:-.045em}
+    h1{margin:10px 0 0;font-size:clamp(32px,4vw,43px);line-height:1.1}
+    h2{margin:0;font-size:21px;line-height:1.25}
+    .subtitle,.section-subtitle{color:var(--muted)}
+    .subtitle{margin:10px 0 0;font-size:15px}
+    .refresh{flex:none;padding:10px 15px;border:1px solid #dce5de;border-radius:10px;background:#fff;color:var(--ink);font-weight:650;cursor:pointer}
+    .refresh:hover{border-color:var(--green);color:var(--green)}
+    .refresh:disabled{opacity:.6;cursor:wait}
+    .divider{height:1px;margin:26px 0 20px;background:var(--line)}
+    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .metric,.signal-card,.assets{border:1px solid var(--line);border-radius:15px;background:#fff}
+    .metric{min-height:105px;padding:17px 19px}
+    .metric-label{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.05em}
+    .metric-value{margin-top:6px;font:750 25px/1.2 Manrope,sans-serif;letter-spacing:-.04em}
+    .metric-note{margin-top:5px;color:#87928b;font-size:12px}
+    .section{margin-top:36px}
+    .section-subtitle{margin:5px 0 14px;font-size:13px}
+    .signals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .signal-card{min-height:142px;padding:18px 20px}
+    .signal-card.buy{border-top:3px solid #32966b}
+    .signal-card.sell{border-top:3px solid #d16a63}
+    .signal-title{display:flex;align-items:center;gap:9px;font:700 16px Manrope,sans-serif}
+    .signal-dot{width:8px;height:8px;border-radius:50%;background:#32966b}
+    .sell .signal-dot{background:#d16a63}
+    .count{margin-left:auto;padding:3px 9px;border-radius:20px;background:#eaf5ef;color:var(--green);font:700 12px "DM Sans",sans-serif}
+    .sell .count{background:#fbefed;color:var(--red)}
+    .empty{margin-top:16px;color:var(--muted);font-size:13px;line-height:1.6}
+    .signal-item{margin-top:12px;padding-top:12px;border-top:1px solid #eff2ef}
+    .signal-top{display:flex;justify-content:space-between;gap:12px}
+    .ticker{font-weight:750}
+    .signal-price{color:var(--muted);font-size:12px;white-space:nowrap}
+    .reason{margin-top:4px;color:#627169;font-size:13px}
+    .assets{overflow:hidden}
+    .asset-row{display:grid;grid-template-columns:minmax(110px,1.1fr) minmax(125px,1.25fr) repeat(3,minmax(90px,1fr)) minmax(100px,.85fr);align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #eff2ef}
+    .asset-row:last-child{border-bottom:0}
+    .asset-head{background:#fafcfb;color:#87928b;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+    .asset-name{font-weight:750}
+    .asset-sub{margin-top:2px;color:#88938c;font-size:12px}
+    .asset-number{font-size:13px;font-weight:600}
+    .badge{display:inline-flex;width:max-content;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+    .badge.buy{background:#eaf5ef;color:var(--green)}
+    .badge.sell{background:#fbefed;color:var(--red)}
+    .badge.mixed{background:#fff4df;color:#996913}
+    .badge.neutral{background:#f0f3f1;color:#6e7b73}
+    .asset-reason{grid-column:1/-1;margin-top:-7px;color:#748078;font-size:12px}
+    .notice{margin-top:16px;padding:12px 14px;border:1px solid #f0dcae;border-radius:10px;background:#fff9ea;color:#735b29;font-size:13px}
+    .error{border-color:#f0cfcc;background:#fff3f2;color:#8e3936}
+    .footnote{margin-top:23px;padding-top:15px;border-top:1px solid var(--line);color:#88938c;font-size:12px;line-height:1.6}
+    .hidden{display:none}
+    @media(max-width:760px){
+      .page{padding:28px 17px 42px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+      .metric{min-height:96px;padding:14px}.metric-value{font-size:22px}.signals{grid-template-columns:1fr;gap:12px}
+      .section{margin-top:29px}
+      .asset-row{grid-template-columns:1fr 1fr;gap:7px 12px;padding:13px 14px}
+      .asset-head{display:none}.asset-reason{grid-column:1/-1;margin-top:0}
+      .asset-row>.asset-number:nth-of-type(2)::before{content:"Cena ";color:#88938c;font-size:11px}
+      .asset-row>.asset-number:nth-of-type(3)::before{content:"SMA 50 ";color:#88938c;font-size:11px}
+      .asset-row>.asset-number:nth-of-type(4)::before{content:"SMA 200 ";color:#88938c;font-size:11px}
+    }
+    @media(max-width:390px){.page{padding-left:13px;padding-right:13px}.metric-label{font-size:10px}.metric-value{font-size:20px}.refresh{padding:9px 11px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <div class="eyebrow"><span class="live-dot"></span>OSOBNÝ INVESTIČNÝ PREHĽAD</div>
+        <h1>Trhové signály</h1>
+        <p class="subtitle">Prehľad sledovaných aktív, technických signálov a ich dôvodov.</p>
+      </div>
+      <button class="refresh" id="refresh" type="button">↻ &nbsp;Obnoviť</button>
+    </header>
+    <div class="divider"></div>
+
+    <section class="metrics" id="metrics" aria-label="Súhrn">
+      <div class="metric"><div class="metric-label">SLEDOVANÉ AKTÍVA</div><div class="metric-value">—</div><div class="metric-note">Načítavam dáta…</div></div>
+      <div class="metric"><div class="metric-label">NÁKUPNÉ SIGNÁLY</div><div class="metric-value">—</div><div class="metric-note">Vyžadujú tvoje posúdenie</div></div>
+      <div class="metric"><div class="metric-label">PREDAJNÉ SIGNÁLY</div><div class="metric-value">—</div><div class="metric-note">Vyžadujú tvoje posúdenie</div></div>
+      <div class="metric"><div class="metric-label">POSLEDNÉ DÁTA</div><div class="metric-value">—</div><div class="metric-note">Denné dáta</div></div>
+    </section>
+
+    <div id="notice" class="notice hidden" role="status"></div>
+
+    <section class="section">
+      <h2>Čo si všímať</h2>
+      <p class="section-subtitle">Nákupné a predajné signály podľa posledných dostupných dát</p>
+      <div class="signals">
+        <article class="signal-card buy">
+          <div class="signal-title"><span class="signal-dot"></span>Možný nákup<span class="count" id="buy-count">0</span></div>
+          <div id="buy-list" class="empty">Načítavam signály…</div>
+        </article>
+        <article class="signal-card sell">
+          <div class="signal-title"><span class="signal-dot"></span>Možný predaj<span class="count" id="sell-count">0</span></div>
+          <div id="sell-list" class="empty">Načítavam signály…</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Sledované aktíva</h2>
+      <p class="section-subtitle">Cena v mene trhu aktíva, technické ukazovatele a aktuálny stav</p>
+      <div class="assets" id="assets">
+        <div class="asset-row asset-head"><span>Aktívum</span><span>Aktuálny stav</span><span>Posledná cena</span><span>SMA 50</span><span>SMA 200</span><span>Dátum dát</span></div>
+        <div class="asset-row"><span>Načítavam trhové dáta…</span></div>
+      </div>
+    </section>
+
+    <footer class="footnote" id="footer">
+      Dáta a signály sa obnovujú automaticky cez GitHub Actions v pracovné dni. Signály vychádzajú z technických indikátorov (SMA, RSI a nastavený stop-loss/take-profit) a z minulých denných dát. Nejde o finančné poradenstvo, príkaz na nákup/predaj ani odporúčanie, koľko investovať. Pred rozhodnutím zváž vlastnú situáciu a riziká.
+    </footer>
+  </main>
+  <script>
+    const numberFormat = new Intl.NumberFormat("sk-SK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const dateFormat = new Intl.DateTimeFormat("sk-SK", { dateStyle: "medium", timeStyle: "short" });
+
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function setMetricCards(data, buys, sells) {
+      const dates = data.assets.map((asset) => asset.date).filter(Boolean);
+      const latestDate = dates.sort((a, b) => {
+        const [ad, am, ay] = a.split(".").map(Number);
+        const [bd, bm, by] = b.split(".").map(Number);
+        return new Date(by, bm - 1, bd) - new Date(ay, am - 1, ad);
+      })[0] || "—";
+      const generated = data.generated_at ? dateFormat.format(new Date(data.generated_at)) : "Neznámy";
+      const values = [
+        [data.assets.length, "Akcie a ETF v zozname"],
+        [buys.length, "Vyžadujú tvoje posúdenie"],
+        [sells.length, "Vyžadujú tvoje posúdenie"],
+        [latestDate, `Dáta vytvorené ${generated}`],
+      ];
+      document.querySelectorAll("#metrics .metric").forEach((card, index) => {
+        card.querySelector(".metric-value").textContent = values[index][0];
+        card.querySelector(".metric-note").textContent = values[index][1];
+      });
+    }
+
+    function renderSignals(targetId, assets, type, countId, emptyText) {
+      const target = document.getElementById(targetId);
+      target.replaceChildren();
+      const matches = assets.filter((asset) => asset.signals.some((signal) => signal.type === type));
+      document.getElementById(countId).textContent = matches.length;
+      if (!matches.length) {
+        target.className = "empty";
+        target.textContent = emptyText;
+        return;
+      }
+      target.className = "";
+      matches.forEach((asset) => {
+        const item = element("div", "signal-item");
+        const top = element("div", "signal-top");
+        top.append(element("span", "ticker", asset.ticker));
+        top.append(element("span", "signal-price", `${numberFormat.format(asset.price)} · ${asset.date}`));
+        item.append(top);
+        const reasons = asset.signals.filter((signal) => signal.type === type).map((signal) => signal.reason).join("; ");
+        item.append(element("div", "reason", reasons));
+        target.append(item);
+      });
+    }
+
+    function renderAssets(assets) {
+      const container = document.getElementById("assets");
+      container.replaceChildren();
+      const header = element("div", "asset-row asset-head");
+      [
+        "Aktívum",
+        "Aktuálny stav",
+        "Posledná cena",
+        `SMA ${window.dashboardData.sma_short_period ?? 50}`,
+        `SMA ${window.dashboardData.sma_long_period ?? 200}`,
+        "Dátum dát",
+      ].forEach((label) => header.append(element("span", "", label)));
+      container.append(header);
+
+      assets.forEach((asset) => {
+        const row = element("div", "asset-row");
+        const identity = element("div");
+        identity.append(element("div", "asset-name", asset.ticker));
+        identity.append(element("div", "asset-sub", `RSI ${asset.rsi == null ? "—" : numberFormat.format(asset.rsi)}`));
+        row.append(identity);
+
+        const badgeType = {
+          "Možný nákup": "buy",
+          "Možný predaj": "sell",
+          "Zmiešané signály": "mixed",
+          "Bez nového signálu": "neutral",
+        }[asset.status] || "neutral";
+        row.append(element("span", `badge ${badgeType}`, asset.status));
+        row.append(element("span", "asset-number", numberFormat.format(asset.price)));
+        row.append(element("span", "asset-number", asset.sma_short == null ? "—" : numberFormat.format(asset.sma_short)));
+        row.append(element("span", "asset-number", asset.sma_long == null ? "—" : numberFormat.format(asset.sma_long)));
+        row.append(element("span", "asset-sub", asset.date));
+        const reason = asset.signals.length ? asset.signals.map((signal) => signal.reason).join("; ") : "Bez nového technického signálu";
+        row.append(element("div", "asset-reason", reason));
+        container.append(row);
+      });
+    }
+
+    async function loadData() {
+      const button = document.getElementById("refresh");
+      const notice = document.getElementById("notice");
+      button.disabled = true;
+      button.textContent = "Načítavam…";
+      notice.classList.add("hidden");
+      try {
+        const response = await fetch(`./data.json?t=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Server vrátil stav ${response.status}.`);
+        const data = await response.json();
+        if (!Array.isArray(data.assets)) throw new Error("Dátový súbor má neplatný formát.");
+        window.dashboardData = data;
+        const buys = data.assets.filter((asset) => asset.signals.some((signal) => signal.type === "BUY"));
+        const sells = data.assets.filter((asset) => asset.signals.some((signal) => signal.type === "SELL"));
+        setMetricCards(data, buys, sells);
+        renderSignals("buy-list", data.assets, "BUY", "buy-count", "V posledných dátach nie je nový nákupný signál.");
+        renderSignals("sell-list", data.assets, "SELL", "sell-count", "V posledných dátach nie je nový predajný signál.");
+        renderAssets(data.assets);
+        if (data.errors && data.errors.length) {
+          notice.textContent = `Nepodarilo sa načítať dáta pre: ${data.errors.map((error) => error.ticker).join(", ")}. Ostatné dostupné aktíva sa zobrazujú.`;
+          notice.classList.remove("hidden");
+        }
+        document.getElementById("footer").dataset.updated = data.generated_at || "";
+      } catch (error) {
+        notice.textContent = `Dáta sa nepodarilo načítať: ${error.message} Skús stránku obnoviť o chvíľu.`;
+        notice.classList.remove("hidden");
+        notice.classList.add("error");
+      } finally {
+        button.disabled = false;
+        button.textContent = "↻  Obnoviť";
+      }
+    }
+
+    document.getElementById("refresh").addEventListener("click", loadData);
+    loadData();
+  </script>
+</body>
+</html>
