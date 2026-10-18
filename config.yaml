@@ -10,10 +10,42 @@ tickers:
   - SPY       # S&P 500 ETF
   - VWCE.DE   # celosvetový akciový ETF
 
+# Širší zoznam akcií a ETF pre hľadanie potvrdeného rastového trendu.
+# Kandidát sa zobrazí len pri pozitívnom 3- aj 6-mesačnom výnose
+# a keď sú ceny aj krátkodobý priemer nad dlhodobým priemerom.
+screening_tickers:
+  - AAPL
+  - MSFT
+  - GOOGL
+  - AMZN
+  - NVDA
+  - META
+  - AVGO
+  - TSLA
+  - COST
+  - LLY
+  - JPM
+  - BRK-B
+  - AMD
+  - ORCL
+  - SPY
+  - QQQ
+  - VTI
+  - VXUS
+  - VWCE.DE
+  - SXR8.DE
+  - EUNL.DE
+  - QDVE.DE
+  - VUAA.DE
+
 # Predvolená mena amerických tickerov a výnimky obchodované v EUR.
 default_currency: USD
 currencies:
   VWCE.DE: EUR
+  SXR8.DE: EUR
+  EUNL.DE: EUR
+  QDVE.DE: EUR
+  VUAA.DE: EUR
 
 # Nastavenia indikátorov (odporúčané, štandardne používané hodnoty)
 indicators:
