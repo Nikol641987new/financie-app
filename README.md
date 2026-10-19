@@ -60,7 +60,10 @@ nie predpoveď ani automatický pokyn na kúpu alebo predaj.
 
 Na stránke môžeš zvoliť orientačný rozpočet 10 €, 20 €, 50 € alebo zadať
 vlastnú sumu; prepočet na zlomok akcie nezohľadňuje poplatky a závisí od
-podpory brokera. Prehľad sa obnoví po úspešnom spustení GitHub Actions.
+podpory brokera. Pri každom kandidátovi je samostatná kalkulačka: zadaný vklad
+a modelovaný rast ceny (predvolene 5 %) zobrazia hypotetický hrubý zisk a
+celkovú hodnotu. Nejde o predpoveď ani garantovaný výnos; výpočet nezahŕňa
+poplatky a dane. Prehľad sa obnoví po úspešnom spustení GitHub Actions.
 
 ## 2. Nastavenie tickerov a pravidiel
 

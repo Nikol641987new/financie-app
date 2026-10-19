@@ -66,7 +66,15 @@
     .candidate-metrics{margin-top:6px;color:#627169;font-size:12px}
     .candidate-returns{margin-top:3px;color:#87928b;font-size:11px}
     .candidate-reason{margin-top:7px;color:#627169;font-size:12px;line-height:1.45}
-    .candidate-amount{margin-top:8px;font-size:12px;font-weight:650}
+    .profit-calculator{margin-top:10px;padding:10px;border:1px solid #e8ede9;border-radius:10px;background:#fafcfb}
+    .calculator-title{font-size:11px;font-weight:750}
+    .calculator-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:7px}
+    .calculator-field{display:flex;flex-direction:column;gap:3px;color:var(--muted);font-size:10px}
+    .calculator-input{width:100%;min-width:0;padding:7px;border:1px solid #dce5de;border-radius:7px;color:var(--ink);font:600 12px "DM Sans",sans-serif}
+    .calculator-input:focus{outline:2px solid #b6dfc8;border-color:var(--green)}
+    .calculator-result{margin-top:8px;color:var(--green);font-size:12px;font-weight:750}
+    .calculator-disclaimer{margin-top:3px;color:#87928b;font-size:10px;line-height:1.4}
+    .asset-calculator-row{display:block;padding-top:0}
     .budget-presets{display:flex;gap:6px}
     .budget-preset{padding:7px 10px;border:1px solid #dce5de;border-radius:8px;background:#fff;color:var(--ink);font-size:12px;font-weight:650;cursor:pointer}
     .budget-preset:hover,.budget-preset.active{border-color:var(--green);background:#eaf5ef;color:var(--green)}
@@ -139,9 +147,9 @@
 
     <section class="section">
       <h2>Krátkodobý prehľad trhu</h2>
-      <p class="section-subtitle">Zoradenie sledovaných akcií a ETF podľa trendu za 3–6 mesiacov a RSI. Ide o orientačný filter, nie pokyn na obchod.</p>
+      <p class="section-subtitle">Zoradenie sledovaných akcií a ETF podľa trendu za 3–6 mesiacov a RSI. Pri každom aktíve môžeš zadať vklad a modelovaný rast. Ide o orientačný filter, nie pokyn na obchod.</p>
       <div class="budget-control">
-        <label for="budget">Suma na orientačný výpočet zlomku</label>
+        <label for="budget">Predvolený vklad pre výpočet zlomku</label>
         <div class="budget-input-wrap">
           <input class="budget-input" id="budget" type="number" min="0.01" max="1000000" step="0.01" value="10" inputmode="decimal">
           <span>€</span>
@@ -151,7 +159,7 @@
           <button class="budget-preset" type="button" data-budget="20">20 €</button>
           <button class="budget-preset" type="button" data-budget="50">50 €</button>
         </div>
-        <span class="budget-hint">Počet kusov je iba odhad; zlomkové nákupy závisia od brokera.</span>
+        <span class="budget-hint">Každá kalkulačka má vlastný vklad a modelovaný rast, predvolene 5 %.</span>
       </div>
       <div class="candidate-groups" id="candidates"><div class="candidate-empty">Načítavam krátkodobý prehľad…</div></div>
     </section>
@@ -166,7 +174,7 @@
     </section>
 
     <footer class="footnote" id="footer">
-      Počet jednotiek je orientačný výpočet sumy ÷ ceny, nie príkaz na nákup. Nákup zlomkových akcií závisí od podpory tvojho brokera; výpočet nezahŕňa jeho poplatky ani prípadný rozdiel medzi zobrazenou a nákupnou cenou. Krátkodobé triedenie vychádza z minulých denných dát, nepotvrdzuje budúci rast ani zisk a môže sa mýliť. Ak už aktívum vlastníš, „slabý trend“ je dôvod na vlastné preverenie, nie automatický príkaz na predaj. Dáta sa obnovujú cez GitHub Actions v pracovné dni.
+      Počet jednotiek je orientačný výpočet sumy ÷ ceny, nie príkaz na nákup. Nákup zlomkových akcií závisí od podpory tvojho brokera. Kalkulačka ukazuje iba hypotetický hrubý zisk pri zadanom raste ceny; nezahŕňa poplatky, dane ani menové zmeny a zisk nie je zaručený. Krátkodobé triedenie vychádza z minulých denných dát. Ak už aktívum vlastníš, „slabý trend“ je dôvod na vlastné preverenie, nie automatický príkaz na predaj. Dáta sa obnovujú cez GitHub Actions v pracovné dni.
     </footer>
   </main>
   <script>
@@ -175,6 +183,7 @@
     const dateFormat = new Intl.DateTimeFormat("sk-SK", { dateStyle: "medium", timeStyle: "short" });
     const quantityFormat = new Intl.NumberFormat("sk-SK", { maximumFractionDigits: 6 });
     const percentageFormat = new Intl.NumberFormat("sk-SK", { maximumFractionDigits: 1, signDisplay: "always" });
+    const calculatorValues = new Map();
 
     function element(tag, className, text) {
       const node = document.createElement(tag);
@@ -236,10 +245,7 @@
           item.append(element("div", "candidate-metrics", `${euroFormat.format(asset.price)} · RSI ${asset.rsi == null ? "—" : numberFormat.format(asset.rsi)}`));
           item.append(element("div", "candidate-returns", `3 mesiace ${percentageFormat.format(asset.return_3m_pct)}% · 6 mesiacov ${percentageFormat.format(asset.return_6m_pct)}%`));
           item.append(element("div", "candidate-reason", asset.reason));
-          const quantity = validBudget && asset.price > 0 ? budget / asset.price : null;
-          item.append(element("div", "candidate-amount", quantity === null
-            ? "Zadaj platnú sumu na výpočet."
-            : `Za ${euroFormat.format(budget)} ≈ ${quantityFormat.format(quantity)} ks`));
+          item.append(createProfitCalculator(asset, validBudget ? budget : 10));
           group.append(item);
         });
         container.append(group);
@@ -247,6 +253,69 @@
       if (!candidates.length) {
         container.replaceChildren(element("div", "candidate-empty", "Pre krátkodobé porovnanie zatiaľ nie sú dostupné dostatočné historické dáta."));
       }
+    }
+
+    function createProfitCalculator(asset, defaultBudget) {
+      const saved = calculatorValues.get(asset.ticker) || { amount: defaultBudget, growth: 5 };
+      calculatorValues.set(asset.ticker, saved);
+      const calculator = element("div", "profit-calculator");
+      calculator.dataset.calculatorTicker = asset.ticker;
+      calculator.append(element("div", "calculator-title", "Orientačná kalkulačka zisku"));
+      const fields = element("div", "calculator-fields");
+      const amountField = element("label", "calculator-field", "Vklad (€)");
+      const amountInput = element("input", "calculator-input");
+      amountInput.type = "number";
+      amountInput.min = "0.01";
+      amountInput.max = "1000000";
+      amountInput.step = "0.01";
+      amountInput.inputMode = "decimal";
+      amountInput.value = saved.amount;
+      amountInput.dataset.calculatorField = "amount";
+      amountInput.setAttribute("aria-label", `${asset.ticker}: vklad v eurách`);
+      amountField.append(amountInput);
+      const growthField = element("label", "calculator-field", "Modelovaný rast (%)");
+      const growthInput = element("input", "calculator-input");
+      growthInput.type = "number";
+      growthInput.min = "0.01";
+      growthInput.max = "1000";
+      growthInput.step = "0.1";
+      growthInput.inputMode = "decimal";
+      growthInput.value = saved.growth;
+      growthInput.dataset.calculatorField = "growth";
+      growthInput.setAttribute("aria-label", `${asset.ticker}: modelovaný rast v percentách`);
+      growthField.append(growthInput);
+      fields.append(amountField, growthField);
+      calculator.append(fields);
+      const result = element("div", "calculator-result");
+      result.setAttribute("aria-live", "polite");
+      calculator.append(result);
+      calculator.append(element("div", "calculator-disclaimer", "Príklad pri zadanom raste, pred poplatkami a daňami — výnos nie je zaručený."));
+
+      const update = () => {
+        const amount = amountInput.valueAsNumber;
+        const growth = growthInput.valueAsNumber;
+        const valid = Number.isFinite(amount) && amount > 0 && amount <= 1000000
+          && Number.isFinite(growth) && growth > 0 && growth <= 1000;
+        amountInput.setCustomValidity(Number.isFinite(amount) && amount > 0 && amount <= 1000000 ? "" : "Zadaj vklad od 0,01 € do 1 000 000 €.");
+        growthInput.setCustomValidity(Number.isFinite(growth) && growth > 0 && growth <= 1000 ? "" : "Zadaj rast od 0,01 % do 1 000 %.");
+        if (!valid) {
+          result.textContent = "Zadaj platný vklad a modelovaný rast.";
+          return;
+        }
+        calculatorValues.set(asset.ticker, { amount, growth });
+        const profit = amount * growth / 100;
+        document.querySelectorAll("[data-calculator-ticker]").forEach((instance) => {
+          if (instance.dataset.calculatorTicker !== asset.ticker) return;
+          instance.querySelector('[data-calculator-field="amount"]').value = amount;
+          instance.querySelector('[data-calculator-field="growth"]').value = growth;
+          instance.querySelector(".calculator-result").textContent =
+            `Možný zisk ${euroFormat.format(profit)} · spolu ${euroFormat.format(amount + profit)}`;
+        });
+      };
+      amountInput.addEventListener("input", update);
+      growthInput.addEventListener("input", update);
+      update();
+      return calculator;
     }
 
     function renderSignals(targetId, assets, type, countId, emptyText) {
@@ -327,6 +396,11 @@
         const reason = asset.signals.length ? asset.signals.map((signal) => signal.reason).join("; ") : "Bez nového technického signálu";
         row.append(element("div", "asset-reason", reason));
         container.append(row);
+        if (!(window.dashboardData.candidates || []).some((candidate) => candidate.ticker === asset.ticker)) {
+          const calculatorRow = element("div", "asset-row asset-calculator-row");
+          calculatorRow.append(createProfitCalculator(asset, validBudget ? budget : 10));
+          container.append(calculatorRow);
+        }
       });
     }
 
