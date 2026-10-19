@@ -127,12 +127,13 @@ def build_dashboard_data() -> dict:
                     prices["Close"],
                     sma_short=sma_short,
                     sma_long=sma_long,
-                    price=float(latest["Close"]),
+                    price_eur=asset["price"],
                     conversion_to_eur=conversion_to_eur,
                     asset_date=asset["date"],
+                    rsi=asset["rsi"],
                 )
                 if trend is not None:
-                    candidates.append({"ticker": ticker, "price": asset["price"], **trend})
+                    candidates.append({"ticker": ticker, **trend})
         except Exception as error:
             logger.exception("Nepodarilo sa spracovať ticker %s", ticker)
             errors.append({"ticker": ticker, "message": str(error)})
@@ -148,8 +149,10 @@ def build_dashboard_data() -> dict:
         "screened_tickers": len(screening_tickers),
         "candidates": sorted(
             candidates,
-            key=lambda candidate: (candidate["momentum_3_12m_pct"], candidate["return_6m_pct"]),
-            reverse=True,
+            key=lambda candidate: (
+                {"Možný vstup": 0, "Vyčkať": 1, "Slabý trend": 2}[candidate["status"]],
+                -candidate["momentum_3_12m_pct"],
+            ),
         ),
         "errors": errors,
     }
@@ -159,11 +162,12 @@ def _growth_trend(
     close: pd.Series,
     sma_short: float | None,
     sma_long: float | None,
-    price: float,
+    price_eur: float,
     conversion_to_eur: float,
     asset_date: str,
+    rsi: float | None,
 ) -> dict | None:
-    """Vyberie rastový trend len pri potvrdení ceny, priemerov a 3–6m výnosov."""
+    """Zaradi aktívum do krátkodobého prehľadu podľa trendu a RSI."""
     if len(close) < 253 or sma_short is None or sma_long is None:
         return None
 
@@ -171,24 +175,45 @@ def _growth_trend(
     return_6m = (float(close.iloc[-1]) / float(close.iloc[-127]) - 1) * 100
     return_12m = (float(close.iloc[-1]) / float(close.iloc[-253]) - 1) * 100
 
-    # Filter on raw market-currency data, before applying the display FX rate.
     latest_price = float(close.iloc[-1])
     short_sma_market = sma_short / conversion_to_eur
     long_sma_market = sma_long / conversion_to_eur
-    if not (
+    confirmed_uptrend = (
         latest_price > short_sma_market > long_sma_market
         and return_3m > 0
         and return_6m > 0
-    ):
-        return None
+    )
+    weak_downtrend = (
+        latest_price < short_sma_market < long_sma_market
+        and return_3m < 0
+    )
+    if confirmed_uptrend and rsi is not None and 45 <= rsi <= 65:
+        status = "Možný vstup"
+        reason = "Rastový trend potvrdený za 3 aj 6 mesiacov; RSI nie je v prekúpenej zóne."
+    elif weak_downtrend:
+        status = "Slabý trend"
+        reason = "Cena aj krátkodobý priemer sú pod dlhodobým priemerom. Ak aktívum vlastníš, prever situáciu."
+    elif confirmed_uptrend and rsi is not None and rsi > 65:
+        status = "Vyčkať"
+        reason = "Trend rastie, ale RSI je zvýšené; vstup po prudkom raste môže byť rizikovejší."
+    elif confirmed_uptrend and (rsi is None or rsi < 45):
+        status = "Vyčkať"
+        reason = "Dlhší trend rastie, no krátkodobý moment zatiaľ nepotvrdzuje možný vstup."
+    else:
+        status = "Vyčkať"
+        reason = "Krátkodobý rastový trend zatiaľ nie je dostatočne potvrdený."
 
     momentum_3_12m = return_3m * 0.4 + return_6m * 0.35 + return_12m * 0.25
     return {
+        "price": price_eur,
         "date": asset_date,
+        "rsi": rsi,
         "return_3m_pct": return_3m,
         "return_6m_pct": return_6m,
         "return_12m_pct": return_12m,
         "momentum_3_12m_pct": momentum_3_12m,
+        "status": status,
+        "reason": reason,
     }
 
 

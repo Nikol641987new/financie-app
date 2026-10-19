@@ -49,6 +49,19 @@ spustení workflow. Lokálna Streamlit verzia zobrazuje natívne ceny trhu.
 Signály sú iba technické indikácie založené na minulých cenách, nie finančné
 poradenstvo ani záruka budúceho vývoja.
 
+### Krátkodobý prehľad
+
+Webový prehľad zoraďuje tickery z `screening_tickers` do kategórií „Možný
+vstup“, „Vyčkať“ a „Slabý trend“. Možný vstup vyžaduje cenu nad SMA 50, SMA 50
+nad SMA 200, kladný 3- aj 6-mesačný výnos a RSI v pásme 45–65. Slabý trend
+znamená cenu pod oboma priemermi a záporný 3-mesačný výnos. Ostatné prípady
+zostávajú v kategórii „Vyčkať“. Ide o jednoduchý filter historických údajov,
+nie predpoveď ani automatický pokyn na kúpu alebo predaj.
+
+Na stránke môžeš zvoliť orientačný rozpočet 10 €, 20 €, 50 € alebo zadať
+vlastnú sumu; prepočet na zlomok akcie nezohľadňuje poplatky a závisí od
+podpory brokera. Prehľad sa obnoví po úspešnom spustení GitHub Actions.
+
 ## 2. Nastavenie tickerov a pravidiel
 
 Uprav `config.yaml` — pridaj/uber tickery, uprav prahové hodnoty RSI,

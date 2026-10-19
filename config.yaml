@@ -10,9 +10,8 @@ tickers:
   - SPY       # S&P 500 ETF
   - VWCE.DE   # celosvetový akciový ETF
 
-# Širší zoznam akcií a ETF pre hľadanie potvrdeného rastového trendu.
-# Kandidát sa zobrazí len pri pozitívnom 3- aj 6-mesačnom výnose
-# a keď sú ceny aj krátkodobý priemer nad dlhodobým priemerom.
+# Širší zoznam akcií a ETF pre krátkodobý prehľad.
+# Aktíva s aspoň rokom dát sa zaradia ako možný vstup, vyčkať alebo slabý trend.
 screening_tickers:
   - AAPL
   - MSFT
